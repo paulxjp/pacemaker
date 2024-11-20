@@ -32,6 +32,7 @@ https://learn.microsoft.com/en-us/azure/sap/workloads/sap-hana-high-availability
 
 ## Example contents of `cib_resources.txt`
 
+```
 sbd
 fence_azure_arm
 azure-lb
@@ -43,8 +44,10 @@ SAPHana
 SAPHanaController
 SAPInstance
 Filesystem
+```
 
 ## Example contents of `cib_parameters_value.txt`
+```
 property:stonith-enabled:true
 property:stonith-timeout:144|900
 property:concurrent-fencing:true
@@ -59,13 +62,17 @@ azure-lb:resource-stickiness:0
 azure-events-az:failure-timeout:120s
 rsc_colocation:score:4000|-5000
 SAPInstance:resource-stickiness:5000
+```
 
 The format is as [field1]:[field2]:[field3]
+
 For regular resource types:
 [resource type]:[property]:[value]
 
 For other types:
+
 global: These settings can control default behaviors for resources, operations, and other cluster-wide configurations.
+
 property: These settings typically control specific cluster properties that influence the overall cluster behavior and configuration.
 
 Since there could be same property name under different types, using this way we can control and make it more accurate while parsing the xml file.
