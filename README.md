@@ -1,6 +1,12 @@
 # Pacemaker CIB Analyzer
 
-This is a Python script to parse and analyze Pacemaker's Cluster Information Base (CIB) XML file. It reads two template parameter files (`cib_resources.txt` and `cib_parameters_value.txt`) located in the same directory as the script and generates a detailed report of the resources and properties found in the CIB XML file. The script also checks if the resources adhere to best practice settings as defined in the parameter files.
+This is a Python script to parse and analyze Pacemaker's Cluster Information Base (CIB) XML file. 
+
+It reads two template parameter files (`cib_resources.txt` and `cib_parameters_value.txt`) located in the same directory as the script and generates a detailed report of the resources and properties found in the CIB XML file. 
+
+The script also checks if the resources adhere to best practice settings as defined in the parameter files.
+
+The results print to the standard output as well as local file under the same folder.
 
 ## Azure Pacemaker Best Practice public doc
 [https://learn.microsoft.com/en-us/azure/sap/workloads/high-availability-guide-suse-pacemaker?tabs=msi](https://learn.microsoft.com/en-us/azure/sap/workloads/high-availability-guide-suse-pacemaker?tabs=msi)
