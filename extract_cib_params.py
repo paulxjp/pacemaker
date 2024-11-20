@@ -283,8 +283,10 @@ def check_pacemaker_resource_values(parsed_elements, parameters, original_lines,
     return analysis_result
 
 def main():
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+
     file_path = input("Enter the absolute path of the CIB XML file (or press Enter to search in the current directory): ").strip()
-    
+
     if not file_path:
         current_dir = os.getcwd()
         file_path = os.path.join(current_dir, "CIB.xml")
@@ -292,24 +294,18 @@ def main():
             print("CIB.xml not found in the current directory.")
             return
 
-        resources_file_path = os.path.join(current_dir, "cib_resources.txt")
-        if not os.path.isfile(resources_file_path):
-            print("cib_resources.txt file not found in the current directory.")
-            return
-    else:
-        if not os.path.isfile(file_path):
-            print(f"The file {file_path} does not exist.")
-            return
-        
-        current_dir = os.path.dirname(file_path)
-        resources_file_path = os.path.join(current_dir, "cib_resources.txt")
-        if not os.path.isfile(resources_file_path):
-            print("cib_resources.txt file not found in the same directory as the CIB XML file.")
-            return
+    if not os.path.isfile(file_path):
+        print(f"The file {file_path} does not exist.")
+        return
 
-    parameters_file_path = os.path.join(current_dir, "cib_parameters_value.txt")
+    resources_file_path = os.path.join(script_dir, "cib_resources.txt")
+    if not os.path.isfile(resources_file_path):
+        print("cib_resources.txt file not found in the script directory.")
+        return
+
+    parameters_file_path = os.path.join(script_dir, "cib_parameters_value.txt")
     if not os.path.isfile(parameters_file_path):
-        print("cib_parameters_value.txt file not found in the current directory.")
+        print("cib_parameters_value.txt file not found in the script directory.")
         return
 
     parameters = load_parameters(parameters_file_path)
@@ -351,7 +347,7 @@ def main():
     print(combined_output)
 
     timestamp = datetime.now().strftime('%Y%m%d-%H%M%S')
-    output_file_path = os.path.join(current_dir, f"cib-parser-{timestamp}.txt")
+    output_file_path = os.path.join(script_dir, f"cib-parser-{timestamp}.txt")
     with open(output_file_path, 'w') as file:
         file.write(combined_output)
 
@@ -367,4 +363,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
