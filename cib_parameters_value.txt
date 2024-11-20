@@ -1,0 +1,14 @@
+property:stonith-enabled:true
+property:stonith-timeout:144|900
+property:concurrent-fencing:true
+fence_azure_arm:pcmk_delay_max:15
+fence_azure_arm:pcmk_monitor_retries:4
+fence_azure_arm:pcmk_action_limit:3
+fence_azure_arm:power_timeout:240
+fence_azure_arm:pcmk_reboot_timeout:900
+global:resource-stickiness:1000
+global:priority-fencing-delay:30
+azure-lb:resource-stickiness:0
+azure-events-az:failure-timeout:120s
+rsc_colocation:score:4000|-5000
+SAPInstance:resource-stickiness:5000
