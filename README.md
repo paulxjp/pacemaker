@@ -68,6 +68,7 @@ azure-lb:resource-stickiness:0
 azure-events-az:failure-timeout:120s
 rsc_colocation:score:4000|-5000
 SAPInstance:resource-stickiness:5000
+SAPHana:AUTOMATED_REGISTER:true
 ```
 
 The format is as [field1]:[field2]:[field3]
