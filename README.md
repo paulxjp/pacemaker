@@ -10,10 +10,15 @@ The results print to the standard output as well as local file under the same fo
 
 ## Azure Pacemaker Best Practice public doc
 [https://learn.microsoft.com/en-us/azure/sap/workloads/high-availability-guide-suse-pacemaker?tabs=msi](https://learn.microsoft.com/en-us/azure/sap/workloads/high-availability-guide-suse-pacemaker?tabs=msi)
+
 https://learn.microsoft.com/en-us/azure/sap/workloads/sap-hana-high-availability?tabs=lb-portal%2Csaphanasr
+
 https://learn.microsoft.com/en-us/azure/sap/workloads/high-availability-guide-suse?tabs=lb-portal%2Censa1
+
 https://learn.microsoft.com/en-us/azure/sap/workloads/high-availability-guide-rhel-pacemaker?tabs=msi
+
 https://learn.microsoft.com/en-us/azure/sap/workloads/sap-hana-high-availability-rhel?tabs=lb-portal
+
 
 ## Prerequisites
 
