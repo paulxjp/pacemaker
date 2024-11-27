@@ -6,10 +6,12 @@ fence_azure_arm:pcmk_monitor_retries:4
 fence_azure_arm:pcmk_action_limit:3
 fence_azure_arm:power_timeout:240
 fence_azure_arm:pcmk_reboot_timeout:900
-property:resource-stickiness:1000
+property:resource-stickiness:1000|1
 property:priority-fencing-delay:30
+property:migration-threshold:5000|3
 azure-lb:resource-stickiness:0
 azure-events-az:failure-timeout:120s
 rsc_colocation:score:4000|-5000
 SAPInstance:resource-stickiness:5000
+SAPInstance:migration-threshold:1
 SAPHana:AUTOMATED_REGISTER:true
