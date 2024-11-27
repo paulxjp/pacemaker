@@ -355,6 +355,7 @@ def main():
         analysis_output = check_pacemaker_resource_values(parsed_elements, parameters, original_lines, resource_types_found)
         
         print("\n" + "-" * 40 + "\nPacemaker Resource Analysis:\n" + analysis_output)
+        print("\n" + "Pacemaker Resource Analysis Done\n")
 
         with open(output_file_path, 'a') as file:
             file.write("\n" + "-" * 40 + "\n")
