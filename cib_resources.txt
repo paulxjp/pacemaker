@@ -1,4 +1,4 @@
-sbd
+external/sbd
 fence_azure_arm
 azure-lb
 azure-events
