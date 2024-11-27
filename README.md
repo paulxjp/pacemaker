@@ -8,6 +8,14 @@ The script also checks if the resources adhere to best practice settings as defi
 
 The results print to the standard output as well as local file under the same folder.
 
+**NOTE:** 
+
+- The location of cib.xml is /var/lib/pacemaker/cib/cib.xml.
+
+- cib.xml can also be retrieved from sosreport (Red Hat family) or hb_report (SUSE) log bundles.
+  
+  sosreport cib.xml location: \sos_commands\pacemaker\crm_report\\<node name\>
+
 ## Azure Pacemaker Best Practice public doc
 [https://learn.microsoft.com/en-us/azure/sap/workloads/high-availability-guide-suse-pacemaker?tabs=msi](https://learn.microsoft.com/en-us/azure/sap/workloads/high-availability-guide-suse-pacemaker?tabs=msi)
 
@@ -44,7 +52,7 @@ https://learn.microsoft.com/en-us/azure/sap/workloads/sap-hana-high-availability
 ## Example contents of `cib_resources.txt`
 
 ```
-sbd
+external/sbd
 fence_azure_arm
 azure-lb
 azure-events
@@ -67,8 +75,8 @@ fence_azure_arm:pcmk_monitor_retries:4
 fence_azure_arm:pcmk_action_limit:3
 fence_azure_arm:power_timeout:240
 fence_azure_arm:pcmk_reboot_timeout:900
-global:resource-stickiness:1000
-global:priority-fencing-delay:30
+property:resource-stickiness:1000
+property:priority-fencing-delay:30
 azure-lb:resource-stickiness:0
 azure-events-az:failure-timeout:120s
 rsc_colocation:score:4000|-5000
@@ -81,10 +89,8 @@ The format is as [field1]:[field2]:[field3]
 For regular resource types:
 [resource type]:[property]:[value]
 
-For other types:
+For other type:
 
-global: These settings can control default behaviors for resources, operations, and other cluster-wide configurations.
-
-property: These settings typically control specific cluster properties that influence the overall cluster behavior and configuration.
+property: These settings can control default behaviors for resources, operations, and other cluster-wide configurations.
 
 Since there could be same property name under different types, using this way we can control and make it more accurate while parsing the xml file.
