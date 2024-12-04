@@ -97,3 +97,9 @@ For other type:
 property: These settings can control default behaviors for resources, operations, and other cluster-wide configurations.
 
 Since there could be same property name under different types, using this way we can control and make it more accurate while parsing the xml file.
+
+
+# cluster_log_parser
+
+cluster_log_parser script to parse pacemaker specific activity log lines.
+
