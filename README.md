@@ -48,6 +48,34 @@ https://learn.microsoft.com/en-us/azure/sap/workloads/sap-hana-high-availability
 
 5. When prompted, enter the absolute path of the CIB XML file. If you press Enter, the script will look for `CIB.xml` in the current working directory.
 
+```
+$ python3 cib_parser.py
+Enter the absolute path of the CIB XML file (or press Enter to search in the current directory): /cib_xmls/cib.xml
+
+##########################################
+#                                        #
+#       Pacemaker CIB Analysis Report    #
+#       From Azure Linux Team            #
+#                                        #
+##########################################
+
+No 'external/sbd' type resources found.
+No 'azure-lb' type resources found.
+No 'azure-events-az' type resources found.
+...
+----------------------------------------
+Pacemaker Resource Analysis:
+Warning: SAPHana AUTOMATED_REGISTER is set to false instead of one of the best practice values: true.
+Original line:             <nvpair name="AUTOMATED_REGISTER" value="false" id="rsc_SAPHana_HDP_HDB03-instance_attributes-AUTOMATED_REGISTER"/>
+
+Warning: property priority-fencing-delay setting is missing. It should be set to one of the best practice values: 30.
+Warning: fence_azure_arm pcmk_delay_max setting is missing. It should be set to one of the best practice values: 15.
+Warning: rsc_colocation score setting is missing. It should be set to one of the best practice values: 4000, -5000.
+
+
+Pacemaker Resource Analysis Done
+
+```
 
 ## Example contents of `cib_resources.txt`
 
@@ -105,7 +133,7 @@ This script `cluster_log_parser` is used to parse pacemaker specific activity lo
 
 It searches the pattern strings in `err_pattern.txt` in the same directory then saves the output to a file named clusterlogparser_{timestamp}.txt in the same directory where the script is run.
 
-**Usage:**
+**Usage**
 ```
 python3 cluster_log_parser.py
 
