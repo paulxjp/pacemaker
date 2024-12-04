@@ -1,0 +1,36 @@
+Fence .*
+maintenance-mode
+\[TOTEM \].*	
+cib_perform_op
+pcmk_shutdown_worker
+Node .*is now lost
+node .*not expected
+node is offline
+node is pending
+peer is no longer part of the cluster
+unresponsive to ipc
+Forcing.* away
+Move rsc
+due to
+SAPInstance\(.*\): .*
+SAPHana\(.*\): .*
+HANA_CALL
+status GRAY
+SFAIL
+not.*SOK
+COULD NOT BE PROMOTED
+promote
+demote
+stonith-ng
+stonith_notify
+High CPU load detected: .*
+check_migration_threshold
+update_cib_stonith_devices
+LogAction
+CrowdStrike
+ds_agent
+Timed Out after
+lack of quorum
+is unclean
+nfs.* not responding
+
