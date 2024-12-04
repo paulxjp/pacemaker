@@ -53,6 +53,10 @@ def parse_log(file_path, patterns, output_file=None):
     try:
         with open(file_path, 'r') as f:
             logging.info(f"Start parsing {file_path}")
+            header = f"======= {os.path.basename(file_path)} ======="
+            if output_file:
+                output_file.write(header + '\n')
+            print(header)
             for line in f:
                 matched = False
                 for pattern in patterns:
@@ -66,6 +70,9 @@ def parse_log(file_path, patterns, output_file=None):
                         break  # Break the loop once a match is found
                 if not matched:
                     logging.debug(f"No match for line: {line.strip()}")
+            if output_file:
+                output_file.write('\n')
+            print('\n')
     except FileNotFoundError:
         logging.error(f"File {file_path} not found.")
         sys.exit(1)
@@ -75,24 +82,25 @@ def parse_log(file_path, patterns, output_file=None):
     
     return error_counts
 
-def get_file_path(prompt):
+def get_directory_path(prompt):
     """
-    Prompt the user for a file path and validate it.
+    Prompt the user for a directory path and validate it.
 
     Args:
         prompt (str): The prompt message for the user.
 
     Returns:
-        str: The validated file path.
+        str: The validated directory path.
     """
-    file_name = input(prompt)
-    if file_name:
-        current_directory = os.path.dirname(os.path.realpath(__file__))
-        full_path = os.path.join(current_directory, file_name)
-        if os.path.isfile(full_path):
-            return full_path
+    directory = input(prompt)
+    if directory:
+        if os.path.isdir(directory):
+            if not any(os.scandir(directory)):
+                logging.warning(f"The directory '{directory}' is empty.")
+                sys.exit(1)  # Exit the script if the directory is empty
+            return directory
         else:
-            logging.error(f"File path '{full_path}' does not exist.")
+            logging.error(f"Directory path '{directory}' does not exist.")
             sys.exit(1)
     return None
 
@@ -120,46 +128,37 @@ def main():
 
     patterns = compile_patterns()
 
-    # Ask the user for the file paths
-    logging.info("Fetching file paths...")
-    file_path1 = get_file_path("Please input the first file path: ")
-    file_path2 = get_file_path("Please input the second file path (press enter to skip): ")
+    # Ask the user for the directory path
+    logging.info("Fetching directory path...")
+    directory_path = get_directory_path("Please input the directory path: ")
 
-    if not file_path1:
-        logging.error("The first file path is required and cannot be empty.")
+    if not directory_path:
+        logging.error("The directory path is required and cannot be empty.")
         sys.exit(1)
 
-    # Ask the user if they want to save the output to a file
-    save_output = input("Do you want to save the output to a file? (y/n): ").lower()
-
-    output_file = None
-    if save_output in ['y', 'yes']:
-        timestamp = datetime.now().strftime('%m-%d-%H%M%S')
-        output_file_name = f'clusterlogparser_{timestamp}.txt'
-        output_file = open(output_file_name, 'w')
+    # Set up the output file
+    timestamp = datetime.now().strftime('%m-%d-%H%M%S')
+    output_file_name = f'clusterlogparser_{timestamp}.txt'
+    output_file = open(output_file_name, 'w')
 
     try:
         error_counts = defaultdict(int)
 
-        # Parse the first file
-        counts1 = parse_log(file_path1, patterns, output_file)
-        for key, value in counts1.items():
-            error_counts[key] += value
-
-        # Parse the second file if provided
-        if file_path2:
-            counts2 = parse_log(file_path2, patterns, output_file)
-            for key, value in counts2.items():
-                error_counts[key] += value
+        # Parse each log file in the directory and its subdirectories
+        for root, _, files in os.walk(directory_path):
+            for file_name in files:
+                file_path = os.path.join(root, file_name)
+                if os.path.isfile(file_path):
+                    counts = parse_log(file_path, patterns, output_file)
+                    for key, value in counts.items():
+                        error_counts[key] += value
 
         # Print error statistics
         print_error_statistics(error_counts, output_file)
 
-        if output_file:
-            logging.info(f"Output saved to file: {output_file_name}")
+        logging.info(f"Output saved to file: {output_file_name}")
     finally:
-        if output_file:
-            output_file.close()
+        output_file.close()
 
 if __name__ == "__main__":
     main()
