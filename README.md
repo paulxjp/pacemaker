@@ -12,7 +12,7 @@ The results print to the standard output as well as local file under the same fo
 
 - The location of cib.xml is /var/lib/pacemaker/cib/cib.xml.
 
-- cib.xml can also be retrieved from sosreport (Red Hat family) or hb_report (SUSE) log bundles.
+- cib.xml can also be retrieved from sosreport (Red Hat family) or crm report (previously hb_report in SUSE) log bundles.
   
   sosreport cib.xml location: \sos_commands\pacemaker\crm_report\\<node name\>
 
