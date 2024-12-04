@@ -192,14 +192,18 @@ def parse_cib_xml(file_path, resource_types, output):
         if rsc_location.get('id', '').startswith('cli-'):
             cli_constraints_found = True
             output.write("-" * 40 + "\n")
-            output.write(f"CLI Constraint ID: {rsc_location.get('id')}\n")
+            dark_blue = "\033[34m"
+            reset_color = "\033[0m"
+            output.write(f"{dark_blue}CLI Constraint ID: {rsc_location.get('id')}\n{reset_color}")
             output.write(f"Resource: {rsc_location.get('rsc')}\n")
             output.write(f"Role: {rsc_location.get('role')}\n")
             output.write(f"Node: {rsc_location.get('node')}\n")
             output.write(f"Score: {rsc_location.get('score')}\n")
 
     if not cli_constraints_found:
-        no_resource_messages.append("No 'cli-' prefixed rsc_location constraints found.\n")
+        dark_blue = "\033[34m"
+        reset_color = "\033[0m"
+        no_resource_messages.append(f"{dark_blue}No 'cli-' prefixed rsc_location constraints found.\n{reset_color}")
 
     nodes = root.findall(".//node")
     for node in nodes:
@@ -345,6 +349,7 @@ def main():
     combined_output = title + "\n" + "\n".join(no_resource_messages) + "\n" + output
 
     print(combined_output)
+    
 
     timestamp = datetime.now().strftime('%Y%m%d-%H%M%S')
     output_file_path = os.path.join(script_dir, f"cib-parser-{timestamp}.txt")
@@ -361,6 +366,7 @@ def main():
             file.write("\n" + "-" * 40 + "\n")
             file.write("Pacemaker Resource Analysis:\n")
             file.write(analysis_output)
+            file.write("Pacemaker Resource Analysis Done\n")
 
 if __name__ == "__main__":
     main()
