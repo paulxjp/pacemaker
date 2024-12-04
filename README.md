@@ -101,5 +101,31 @@ Since there could be same property name under different types, using this way we
 
 # cluster_log_parser
 
-cluster_log_parser script to parse pacemaker specific activity log lines.
+This script `cluster_log_parser` is used to parse pacemaker specific activity log lines.
 
+It searches the pattern strings in `err_pattern.txt` in the same directory then saves the output to a file named clusterlogparser_{timestamp}.txt in the same directory where the script is run.
+
+**Usage:**
+```
+python3 cluster_log_parser.py
+
+2024-12-04 16:47:35,775 - INFO - Fetching directory path...
+Please input the directory path: /pacemakertool/clusterlogfiles/
+2024-12-04 16:47:39,437 - INFO - Start parsing /pacemakertool/clusterlogfiles/ha-log.txt
+======= ha-log.txt =======
+
+Error Statistics:
+"HANA_CALL: 24 occurrences"
+"demote: 12 occurrences"
+"promote: 32 occurrences"
+"not.*SOK: 4 occurrences"
+"SFAIL: 16 occurrences"
+"Node .*is now lost: 6 occurrences"
+"node .*not expected: 2 occurrences"
+"cib_perform_op: 12061 occurrences"
+"LogAction: 11 occurrences"
+"check_migration_threshold: 216 occurrences"
+"stonith-ng: 5 occurrences"
+"Fence .*: 1 occurrences"
+2024-12-04 16:47:52,843 - INFO - Output saved to file: clusterlogparser_12-04-164739.txt
+```
