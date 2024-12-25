@@ -112,20 +112,35 @@ rsc_colocation:score:4000|-5000
 SAPInstance:resource-stickiness:5000
 SAPInstance:migration-threshold:1
 SAPHana:AUTOMATED_REGISTER:true
+azure-lb:operation:monitor:timeout:20s|20
+azure-lb:operation:monitor:interval:10s|10
 
 ```
 
-The format is as [field1]:[field2]:[field3]
+There are 2 types of format:
+```
+[field1]:[field2]:[field3] 
 
-For regular resource types:
-[resource type]:[property]:[value]
+[field1]:[field2]:[field3][field4]:[field5]
+```
 
-For other type:
+For type1 - regular resource and global properties:
 
-property: These settings can control default behaviors for resources, operations, and other cluster-wide configurations.
+[field1] controls the check behavior, it can be either
+
+**[specific resource type]**:[property]:[value]
+
+Or
+
+**[property]**:[parameter]:[value]
+
+**property**: These settings can control default behaviors for resources, operations, and other cluster-wide configurations.
 
 Since there could be same property name under different types, using this way we can control and make it more accurate while parsing the xml file.
 
+For type2 - check operation settings, e.g. timeout, interval
+
+**Note**: If you are not quite sure, do not edit this manually, check with the author.
 
 # cluster_log_parser
 
