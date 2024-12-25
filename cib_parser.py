@@ -29,6 +29,7 @@ def parse_primitive_resource(resource, output):
     parsed_resources.add(resource_id)
 
     resource_type = resource.get('type')
+    
     output.write("-" * 40 + "\n")
     output.write(f"Resource ID: {resource_id}, Resource Type: {resource_type}\n")
     
@@ -131,6 +132,12 @@ def parse_cib_xml(file_path, resource_types, output):
         output.write(f"An error occurred while reading the XML file: {e}\n")
         return None, no_resource_messages, []
 
+    # Skip parsing the <status> section
+    # Remove the status element if it exists
+    status_element = root.find("status")
+    if status_element is not None:
+        root.remove(status_element)
+
     resource_types_found = set()
     parsed_elements = []
 
@@ -142,10 +149,14 @@ def parse_cib_xml(file_path, resource_types, output):
 
         resource_types_found.add(resource_type)
         output.write(f"\nResource Type: {resource_type}\n")  # Add a blank line before each resource type for clarity
+        
+        # Parse each primitive resource and add to parsed_elements
         for resource in resources:
+            parsed_elements.append((resource, resource_type))  # Store the resource with its type as context
             for nvpair, context in parse_primitive_resource(resource, output):
                 parsed_elements.append((nvpair, context))
 
+    # Parse other elements like clones, groups, constraints, etc., as needed
     clones = root.findall(".//clone")
     for clone in clones:
         for nvpair, context in parse_clone_element(clone, output):
@@ -217,27 +228,95 @@ def load_parameters(file_path):
     try:
         with open(file_path, 'r') as file:
             for line in file:
-                if ':' in line:
-                    scope, name, value = line.strip().split(':', 2)
+                # print(f"Debug Loading line from parameters file: {line.strip()}")
+                parts = line.strip().split(':')
+                if len(parts) == 3:
+                    # Handle the original 3-fields format
+                    scope, name, value = parts
                     if scope not in parameters:
                         parameters[scope] = {}
                     parameters[scope][name.strip()] = [v.strip() for v in value.split('|')]
+                    # print(f"Debug Loaded 3-fields parameter: {scope}, {name}, {value}")
+                elif len(parts) == 5:
+                    # Handle the new 5-fields format
+                    scope, keyword, op_name, property_name, value = parts
+                    if keyword == 'operation':
+                        if scope not in parameters:
+                            parameters[scope] = {}
+                        if 'operation' not in parameters[scope]:
+                            parameters[scope]['operation'] = {}
+                        if op_name not in parameters[scope]['operation']:
+                            parameters[scope]['operation'][op_name] = {}
+                        parameters[scope]['operation'][op_name][property_name.strip()] = [v.strip() for v in value.split('|')]
+                        # print(f"Debug Loaded 5-fields parameter: {scope}, operation, {op_name}, {property_name}, {value}")
     except Exception as e:
         print(f"An error occurred while reading the parameters file: {e}")
     return parameters
 
+def check_operations(resource, context, parameters, analysis_output, original_lines):
+    # print(f"Checking operations for resource type: {context}")
+    operations = resource.find("operations")
+    if operations is not None:
+        for op in operations.findall("op"):
+            op_name = op.get('name')
+            # print(f"Checking operation: {op_name}")
+            if context in parameters and 'operation' in parameters[context]:
+                if op_name in parameters[context]['operation']:
+                    for property_name in ['timeout', 'interval']:
+                        value = op.get(property_name)
+                        if value is not None:
+                            value = value.strip()
+                            expected_values = parameters[context]['operation'][op_name].get(property_name, [])
+                            if expected_values:  # Only check if expected values are defined
+                                # print(f"Operation '{op_name}' {property_name}: Current value = {value}, Expected values = {expected_values}")
+                                if value.lower() not in (ev.lower() for ev in expected_values):
+                                    expected_values_str = ', '.join(expected_values)
+                                    analysis_output.write(f"Warning: {context} operation '{op_name}' {property_name} is set to {value} instead of one of the best practice values: {expected_values_str}.\n")
+                                    for line in original_lines:
+                                        if f'id="{op.get("id")}"' in line and f'{property_name}="{value}"' in line:
+                                            analysis_output.write(f"Original line: {line}\n")
+                                            break
+
+    # Check for missing operations
+    defined_ops = {op.get('name') for op in operations.findall("op")} if operations else set()
+    expected_ops = set(parameters[context]['operation'].keys()) if context in parameters and 'operation' in parameters[context] else set()
+    missing_ops = expected_ops - defined_ops
+
+    for missing_op in missing_ops:
+        analysis_output.write(f"Warning2: {context} operation '{missing_op}' setting is missing. It should be set to one of the best practice values.\n")
+                                    
 def check_pacemaker_resource_values(parsed_elements, parameters, original_lines, resource_types_found):
     analysis_output = StringIO()
     found_parameters = {scope: {name: False for name in params} for scope, params in parameters.items()}
 
-    def check_nvpair(nvpair, context):
-        name = nvpair.get('name').strip()
-        value = nvpair.get('value').strip()
+    def check_nvpair(nvpair, context):  
+        if nvpair is None:
+            # print(f"Warning: Attempted to check a None nvpair element in context: {context}")
+            return
+ 
+        name = nvpair.get('name')
+        if name is None:
+            # print(f"Warning: nvpair element missing 'name' attribute in context: {context}")
+            return
+        
+        value = nvpair.get('value')
+        if value is None:
+            print(f"Warning: nvpair element missing 'value' attribute for name: {name} in context: {context}")
+            # Use parent_info if provided
+            if parent_info:
+                print(f"Debug Info: Parent Tag: {parent_info.get('tag', 'None')}, Parent ID: {parent_info.get('id', 'None')}")
+            return
+        
+        name = name.strip()
+        value = value.strip()
+        # print(f"Debug Checking nvpair: {context} {name} = {value}")
+
         for scope in parameters:
-            if (scope == "property" and context == "global") or (scope in resource_types_found and scope == context) or (scope == "global" and context == "global"):
+            if (scope == "property" and context == "global") or (scope in resource_types_found and scope == context):
                 if name in parameters[scope]:
                     found_parameters[scope][name] = True
                     expected_values = parameters[scope][name]
+                    # print(f"Debug nvpair '{name}': Current value = {value}, Expected values = {expected_values}")
                     if value.lower() not in (ev.lower() for ev in expected_values):
                         expected_values_str = ', '.join(expected_values)
                         analysis_output.write(f"Warning: {context} {name} is set to {value} instead of one of the best practice values: {expected_values_str}.\n")
@@ -247,6 +326,7 @@ def check_pacemaker_resource_values(parsed_elements, parameters, original_lines,
                                 break
 
     def check_constraint(constraint, context):
+        # print(f"Debug Checking constraint: {constraint.tag}, ID = {constraint.get('id')}")
         for param_name in parameters.get(context, {}):
             param_value = constraint.get(param_name)
             if param_value is not None:
@@ -261,6 +341,7 @@ def check_pacemaker_resource_values(parsed_elements, parameters, original_lines,
 
             found_parameters[context][param_name] = True
             expected_values = parameters[context][param_name]
+            # print(f"Debug constraint '{param_name}': Current value = {param_value}, Expected values = {expected_values}")
             if param_value.lower() not in (ev.lower() for ev in expected_values):
                 expected_values_str = ', '.join(expected_values)
                 analysis_output.write(f"Warning: {context} {param_name} is set to {param_value} instead of one of the best practice values: {expected_values_str}.\n")
@@ -269,15 +350,36 @@ def check_pacemaker_resource_values(parsed_elements, parameters, original_lines,
                         analysis_output.write(f"Original line: {line}\n")
                         break
 
+    # Iterate over parsed elements and check each
     for element, context in parsed_elements:
-        if context == "rsc_colocation":
-            check_constraint(element, context)
-        else:
+        # print(f"Debug Checking element: {element.tag}, Context = {context}")
+
+        if element.tag == 'primitive':  # Ensure we are processing primitives
+            # Check nvpair attributes for the primitive resource
+            # print(f"Debug checking Calling check_nvpair for element ID: {element.get('id')}")
             check_nvpair(element, context)
 
+            # Specifically check for operations within the primitive
+            operations = element.find("operations")
+            if operations is not None:
+                # print(f"Debug Checking operations for resource ID: {element.get('id')}")
+                check_operations(element, context, parameters, analysis_output, original_lines)
+        elif context == "rsc_colocation":
+            # Special handling for rsc_colocation, if needed
+            # print(f"Debug Checking Calling check_constraint for element ID: {element.get('id')}")
+            check_constraint(element, context)
+        else:
+            # Handle other types of elements if necessary
+            # print(f"Debug Checking nvpair attributes for non-primitive element ID: {element.get('id')}")
+            check_nvpair(element, context)
+
+    # Check for missing parameters
     for scope, params in found_parameters.items():
         if scope in resource_types_found or scope in ["global", "property", "rsc_colocation"]:
             for name, found in params.items():
+                if name == 'operation':
+                    continue  # Skip checking 'operation' as a parameter name
+                # print(f"Debug Checking parameter Found: {name}, Found: {found}")  # Debugging: Show parameter name and if it was found
                 if not found:
                     expected_values_str = ', '.join(parameters[scope][name])
                     analysis_output.write(f"Warning: {scope} {name} setting is missing. It should be set to one of the best practice values: {expected_values_str}.\n")
@@ -285,7 +387,7 @@ def check_pacemaker_resource_values(parsed_elements, parameters, original_lines,
     analysis_result = analysis_output.getvalue()
     analysis_output.close()
     return analysis_result
-
+    
 def main():
     script_dir = os.path.dirname(os.path.abspath(__file__))
 
