@@ -2,6 +2,7 @@ import os
 import re
 import sys
 import logging
+import argparse
 from datetime import datetime
 from collections import defaultdict
 
@@ -33,6 +34,26 @@ def compile_patterns(pattern_file='err_pattern.txt'):
 
     return [re.compile(pattern, re.IGNORECASE) for pattern in processed_patterns]
 
+def is_text_file(file_path, block_size=512):
+    """
+    Check if a file is likely a text file by reading a small block of it.
+
+    Args:
+        file_path (str): The path to the file to check.
+        block_size (int): The number of bytes to read for checking. Default is 512.
+
+    Returns:
+        bool: True if the file is likely a text file, False otherwise.
+    """
+    try:
+        with open(file_path, 'rb') as file:
+            block = file.read(block_size)
+            # Try to decode the block using UTF-8
+            block.decode('utf-8')
+            return True
+    except (UnicodeDecodeError, FileNotFoundError):
+        return False
+        
 def parse_log(file_path, patterns, output_file=None):
     """
     Parse the log file and search for patterns.
@@ -42,13 +63,14 @@ def parse_log(file_path, patterns, output_file=None):
         patterns (list): The list of compiled regex patterns.
         output_file (file object, optional): The output file to write matches to.
 
-    Raises:
-        FileNotFoundError: If the file_path does not exist.
+    Returns:
+        dict: A dictionary with error patterns as keys and their counts as values.
     """
-    if not file_path:
-        return
-
     error_counts = defaultdict(int)
+
+    if not file_path or not is_text_file(file_path):
+        logging.warning(f"Skipping binary or unreadable file: {file_path}")
+        return error_counts
 
     try:
         with open(file_path, 'r') as f:
@@ -58,17 +80,16 @@ def parse_log(file_path, patterns, output_file=None):
                 output_file.write(header + '\n')
             print(header)
             for line in f:
-                matched = False
+                matched_any = False  # Track if any pattern matches the line
                 for pattern in patterns:
                     if pattern.search(line):
-                        matched = True
+                        matched_any = True
                         error_counts[pattern.pattern] += 1
                         if output_file:
                             output_file.write(line.strip() + '\n')
                         else:
                             print(line.strip())
-                        break  # Break the loop once a match is found
-                if not matched:
+                if not matched_any:
                     logging.debug(f"No match for line: {line.strip()}")
             if output_file:
                 output_file.write('\n')
@@ -124,16 +145,19 @@ def print_error_statistics(error_counts, output_file=None):
             output_file.write(result + '\n')
 
 def main():
+    parser = argparse.ArgumentParser(description="Log file analyzer")
+    parser.add_argument('-d', '--directory', help="Directory containing log files", required=True)
+    args = parser.parse_args()
+
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
     patterns = compile_patterns()
 
-    # Ask the user for the directory path
-    logging.info("Fetching directory path...")
-    directory_path = get_directory_path("Please input the directory path: ")
+    # Use the directory path from the command-line argument
+    directory_path = args.directory
 
-    if not directory_path:
-        logging.error("The directory path is required and cannot be empty.")
+    if not directory_path or not os.path.isdir(directory_path):
+        logging.error("The directory path is invalid or does not exist.")
         sys.exit(1)
 
     # Set up the output file
