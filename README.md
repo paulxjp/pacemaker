@@ -150,25 +150,29 @@ It searches the pattern strings in `err_pattern.txt` in the same directory then 
 
 **Usage**
 ```
-python3 cluster_log_parser.py
+python3 cluster_log_parser.py -d /clusterlogfiles
 
-2024-12-04 16:47:35,775 - INFO - Fetching directory path...
-Please input the directory path: /pacemakertool/clusterlogfiles/
-2024-12-04 16:47:39,437 - INFO - Start parsing /pacemakertool/clusterlogfiles/ha-log.txt
+2024-12-27 15:20:06,029 - INFO - Start parsing /mnt/c/AI/pacemakertool/clusterlogfiles/cib_parserV1.7.py
+======= cib_parserV1.7.py =======
+
+
+2024-12-27 15:20:06,083 - INFO - Start parsing /mnt/c/AI/pacemakertool/clusterlogfiles/ha-log.txt
 ======= ha-log.txt =======
+
+
+2024-12-27 15:20:09,147 - INFO - Start parsing /mnt/c/AI/pacemakertool/clusterlogfiles/pacemaker.log
+======= pacemaker.log =======
 
 Error Statistics:
 "HANA_CALL: 24 occurrences"
-"demote: 12 occurrences"
-"promote: 32 occurrences"
-"not.*SOK: 4 occurrences"
-"SFAIL: 16 occurrences"
+"demote: 13 occurrences"
+"promote: 34 occurrences"
+"not.*SOK: 8 occurrences"
+"SFAIL: 18 occurrences"
 "Node .*is now lost: 6 occurrences"
 "node .*not expected: 2 occurrences"
-"cib_perform_op: 12061 occurrences"
-"LogAction: 11 occurrences"
 "check_migration_threshold: 216 occurrences"
 "stonith-ng: 5 occurrences"
 "Fence .*: 1 occurrences"
-2024-12-04 16:47:52,843 - INFO - Output saved to file: clusterlogparser_12-04-164739.txt
+2024-12-27 15:20:17,954 - INFO - Output saved to file: clusterlogparser_12-27-152005.txt
 ```
