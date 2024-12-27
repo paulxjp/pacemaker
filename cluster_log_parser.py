@@ -145,7 +145,7 @@ def print_error_statistics(error_counts, output_file=None):
             output_file.write(result + '\n')
 
 def main():
-    parser = argparse.ArgumentParser(description="Log file analyzer")
+    parser = argparse.ArgumentParser(description="Pacemaker Log file analyzer")
     parser.add_argument('-d', '--directory', help="Directory containing log files", required=True)
     args = parser.parse_args()
 
