@@ -386,57 +386,58 @@ def check_pacemaker_resource_values(parsed_elements, parameters, original_lines,
     return analysis_result
     
 def main():
-    script_dir = os.path.dirname(os.path.abspath(__file__))
+    try:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
 
-    file_path = input("Enter the absolute path of the CIB XML file (or press Enter to search in the current directory): ").strip()
+        file_path = input("Enter the absolute path of the CIB XML file (or press Enter to search in the current directory): ").strip()
 
-    if not file_path:
-        current_dir = os.getcwd()
-        file_path = os.path.join(current_dir, "CIB.xml")
+        if not file_path:
+            current_dir = os.getcwd()
+            file_path = os.path.join(current_dir, "CIB.xml")
+            if not os.path.isfile(file_path):
+                print("CIB.xml not found in the current directory.")
+                return
+
         if not os.path.isfile(file_path):
-            print("CIB.xml not found in the current directory.")
+            print(f"The file {file_path} does not exist.")
             return
 
-    if not os.path.isfile(file_path):
-        print(f"The file {file_path} does not exist.")
-        return
+        resources_file_path = os.path.join(script_dir, "cib_resources.txt")
+        if not os.path.isfile(resources_file_path):
+            print("cib_resources.txt file not found in the script directory.")
+            return
 
-    resources_file_path = os.path.join(script_dir, "cib_resources.txt")
-    if not os.path.isfile(resources_file_path):
-        print("cib_resources.txt file not found in the script directory.")
-        return
+        parameters_file_path = os.path.join(script_dir, "cib_parameters_value.txt")
+        if not os.path.isfile(parameters_file_path):
+            print("cib_parameters_value.txt file not found in the script directory.")
+            return
 
-    parameters_file_path = os.path.join(script_dir, "cib_parameters_value.txt")
-    if not os.path.isfile(parameters_file_path):
-        print("cib_parameters_value.txt file not found in the script directory.")
-        return
+        parameters = load_parameters(parameters_file_path)
 
-    parameters = load_parameters(parameters_file_path)
+        try:
+            with open(resources_file_path, 'r') as file:
+                resource_types = [line.strip() for line in file.readlines() if line.strip()]
+        except Exception as e:
+            print(f"An error occurred while reading the resource types file: {e}")
+            return
 
-    try:
-        with open(resources_file_path, 'r') as file:
-            resource_types = [line.strip() for line in file.readlines() if line.strip()]
-    except Exception as e:
-        print(f"An error occurred while reading the resource types file: {e}")
-        return
+        if not resource_types:
+            print("No resource types found in cib_resources.txt file.")
+            return
 
-    if not resource_types:
-        print("No resource types found in cib_resources.txt file.")
-        return
+        old_stdout = sys.stdout
+        sys.stdout = mystdout = StringIO()
 
-    old_stdout = sys.stdout
-    sys.stdout = mystdout = StringIO()
+        with open(file_path, 'r') as f:
+            original_lines = f.readlines()
 
-    with open(file_path, 'r') as f:
-        original_lines = f.readlines()
+        root, no_resource_messages, resource_types_found, parsed_elements = parse_cib_xml(file_path, resource_types, mystdout)
 
-    root, no_resource_messages, resource_types_found, parsed_elements = parse_cib_xml(file_path, resource_types, mystdout)
+        sys.stdout = old_stdout
 
-    sys.stdout = old_stdout
+        output = mystdout.getvalue()
 
-    output = mystdout.getvalue()
-
-    title = """
+        title = """
 ##########################################
 #                                        #
 #       Pacemaker CIB Analysis Report    #
@@ -445,27 +446,30 @@ def main():
 ##########################################
 """
 
-    combined_output = title + "\n" + "\n".join(no_resource_messages) + "\n" + output
+        combined_output = title + "\n" + "\n".join(no_resource_messages) + "\n" + output
 
-    print(combined_output)
-    
-
-    timestamp = datetime.now().strftime('%Y%m%d-%H%M%S')
-    output_file_path = os.path.join(script_dir, f"cib-parser-{timestamp}.txt")
-    with open(output_file_path, 'w') as file:
-        file.write(combined_output)
-
-    if root is not None:
-        analysis_output = check_pacemaker_resource_values(parsed_elements, parameters, original_lines, resource_types_found)
+        print(combined_output)
         
-        print("\n" + "-" * 40 + "\nPacemaker Resource Analysis:\n" + analysis_output)
-        print("\n" + "Pacemaker Resource Analysis Done\n")
 
-        with open(output_file_path, 'a') as file:
-            file.write("\n" + "-" * 40 + "\n")
-            file.write("Pacemaker Resource Analysis:\n")
-            file.write(analysis_output)
-            file.write("Pacemaker Resource Analysis Done\n")
+        timestamp = datetime.now().strftime('%Y%m%d-%H%M%S')
+        output_file_path = os.path.join(script_dir, f"cib-parser-{timestamp}.txt")
+        with open(output_file_path, 'w') as file:
+            file.write(combined_output)
+
+        if root is not None:
+            analysis_output = check_pacemaker_resource_values(parsed_elements, parameters, original_lines, resource_types_found)
+            
+            print("\n" + "-" * 40 + "\nPacemaker Resource Analysis:\n" + analysis_output)
+            print("\n" + "Pacemaker Resource Analysis Done\n")
+
+            with open(output_file_path, 'a') as file:
+                file.write("\n" + "-" * 40 + "\n")
+                file.write("Pacemaker Resource Analysis:\n")
+                file.write(analysis_output)
+                file.write("Pacemaker Resource Analysis Done\n")
+
+    except KeyboardInterrupt:
+        print("\nOperation cancelled by user. Exiting gracefully.")
 
 if __name__ == "__main__":
     main()
