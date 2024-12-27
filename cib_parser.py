@@ -301,10 +301,7 @@ def check_pacemaker_resource_values(parsed_elements, parameters, original_lines,
         
         value = nvpair.get('value')
         if value is None:
-            print(f"Warning: nvpair element missing 'value' attribute for name: {name} in context: {context}")
-            # Use parent_info if provided
-            if parent_info:
-                print(f"Debug Info: Parent Tag: {parent_info.get('tag', 'None')}, Parent ID: {parent_info.get('id', 'None')}")
+            # print(f"Warning: nvpair element missing 'value' attribute for name: {name} in context: {context}")
             return
         
         name = name.strip()
@@ -375,14 +372,14 @@ def check_pacemaker_resource_values(parsed_elements, parameters, original_lines,
 
     # Check for missing parameters
     for scope, params in found_parameters.items():
-        if scope in resource_types_found or scope in ["global", "property", "rsc_colocation"]:
+        if scope in resource_types_found or scope in ["global", "property"]:
             for name, found in params.items():
                 if name == 'operation':
                     continue  # Skip checking 'operation' as a parameter name
-                # print(f"Debug Checking parameter Found: {name}, Found: {found}")  # Debugging: Show parameter name and if it was found
+                print(f"Debug Checking parameter Found: {name}, Scope: {scope}, Found: {found}")  # Debugging: Show parameter name and if it was found
                 if not found:
                     expected_values_str = ', '.join(parameters[scope][name])
-                    analysis_output.write(f"Warning: {scope} {name} setting is missing. It should be set to one of the best practice values: {expected_values_str}.\n")
+                    analysis_output.write(f"Warning1: {scope} {name} setting is missing. It should be set to one of the best practice values: {expected_values_str}.\n")
 
     analysis_result = analysis_output.getvalue()
     analysis_output.close()
