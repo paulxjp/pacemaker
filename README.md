@@ -45,7 +45,8 @@ https://learn.microsoft.com/en-us/azure/sap/workloads/sap-hana-high-availability
     ```sh
     python3 cib_parser.py <path of cib.xml>
     ```
-
+    
+```
 ##########################################
 #                                        #
 #       Pacemaker CIB Analysis Report    #
