@@ -1,3 +1,4 @@
+import argparse
 import os
 import xml.etree.ElementTree as ET
 from datetime import datetime
@@ -387,16 +388,20 @@ def check_pacemaker_resource_values(parsed_elements, parameters, original_lines,
     
 def main():
     try:
+        # Set up argument parser
+        parser = argparse.ArgumentParser(description='Parse and analyze a CIB XML file.')
+        parser.add_argument('file_path', metavar='FILE_PATH', type=str, nargs='?', 
+                            help='The absolute path to the CIB XML file.')
+        args = parser.parse_args()
+
         script_dir = os.path.dirname(os.path.abspath(__file__))
 
-        file_path = input("Enter the absolute path of the CIB XML file (or press Enter to search in the current directory): ").strip()
+        if not args.file_path:
+            print("Error: CIB XML file path is required.")
+            print("Use -h or --help for usage information.")
+            return
 
-        if not file_path:
-            current_dir = os.getcwd()
-            file_path = os.path.join(current_dir, "CIB.xml")
-            if not os.path.isfile(file_path):
-                print("CIB.xml not found in the current directory.")
-                return
+        file_path = args.file_path
 
         if not os.path.isfile(file_path):
             print(f"The file {file_path} does not exist.")
@@ -450,7 +455,6 @@ def main():
 
         print(combined_output)
         
-
         timestamp = datetime.now().strftime('%Y%m%d-%H%M%S')
         output_file_path = os.path.join(script_dir, f"cib-parser-{timestamp}.txt")
         with open(output_file_path, 'w') as file:
