@@ -43,14 +43,8 @@ https://learn.microsoft.com/en-us/azure/sap/workloads/sap-hana-high-availability
 4. Run the script with Python:
 
     ```sh
-    python3 cib_parser.py
+    python3 cib_parser.py <path of cib.xml>
     ```
-
-5. When prompted, enter the absolute path of the CIB XML file. If you press Enter, the script will look for `CIB.xml` in the current working directory.
-
-```
-$ python3 cib_parser.py
-Enter the absolute path of the CIB XML file (or press Enter to search in the current directory): /cib_xmls/cib.xml
 
 ##########################################
 #                                        #
