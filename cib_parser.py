@@ -377,7 +377,7 @@ def check_pacemaker_resource_values(parsed_elements, parameters, original_lines,
             for name, found in params.items():
                 if name == 'operation':
                     continue  # Skip checking 'operation' as a parameter name
-                print(f"Debug Checking parameter Found: {name}, Scope: {scope}, Found: {found}")  # Debugging: Show parameter name and if it was found
+                # print(f"Debug Checking parameter Found: {name}, Scope: {scope}, Found: {found}")  # Debugging: Show parameter name and if it was found
                 if not found:
                     expected_values_str = ', '.join(parameters[scope][name])
                     analysis_output.write(f"Warning1: {scope} {name} setting is missing. It should be set to one of the best practice values: {expected_values_str}.\n")
