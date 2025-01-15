@@ -23,3 +23,5 @@ SAPHana:AUTOMATED_REGISTER:true
 SAPHana:operation:promote:timeout:3600
 SAPInstance:operation:monitor:timeout:60
 SAPInstance:operation:monitor:interval:20
+azure-events-az:failure-timeout:120s
+azure-events-az:operation:monitor:interval:10s|10
