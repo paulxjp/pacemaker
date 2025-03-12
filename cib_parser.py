@@ -392,7 +392,21 @@ def check_pacemaker_resource_values(parsed_elements, parameters, original_lines,
     analysis_result = analysis_output.getvalue()
     analysis_output.close()
     return analysis_result
+
+def determine_cluster_type(resource_types_found):
+    # Define the main application types
+    main_app_types = {'SAPHana', 'SAPInstance', 'db2'}
     
+    # Find intersection with resource types found
+    found_app_types = main_app_types.intersection(resource_types_found)
+    
+    if found_app_types:
+        # If any main app types are found, return them as a statement
+        return f"This cluster is configured with application types: {', '.join(found_app_types)}."
+    else:
+        # If none of the main app types are found, indicate it's a non-defined type
+        return "This cluster is configured with non-defined application types."
+        
 def main():
     try:
         # Set up argument parser
@@ -448,6 +462,16 @@ def main():
         sys.stdout = old_stdout
 
         output = mystdout.getvalue()
+        
+        # Determine the cluster type and add to the output
+        cluster_type_statement = determine_cluster_type(resource_types_found)
+        
+        # Define ANSI escape codes for dark blue color
+        dark_blue = "\033[34m"
+        reset_color = "\033[0m"
+
+        # Add color to the cluster type statement
+        colored_cluster_type_statement = f"{dark_blue}{cluster_type_statement}{reset_color}"
 
         title = """
 ##########################################
@@ -457,8 +481,8 @@ def main():
 #                                        #
 ##########################################
 """
-
-        combined_output = title + "\n" + "\n".join(no_resource_messages) + "\n" + output
+        
+        combined_output = title + "\n" + colored_cluster_type_statement + "\n\n" + "\n".join(no_resource_messages) + "\n" + output
 
         print(combined_output)
         
