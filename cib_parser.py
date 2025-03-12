@@ -314,9 +314,15 @@ def check_pacemaker_resource_values(parsed_elements, parameters, original_lines,
                 if name in parameters[scope]:
                     found_parameters[scope][name] = True
                     expected_values = parameters[scope][name]
+                    
+                    if value is None and "NULL" in expected_values:
+                        continue  # Accept missing value if "NULL" is in expected values
+                        
                     # print(f"Debug nvpair '{name}': Current value = {value}, Expected values = {expected_values}")
-                    if value.lower() not in (ev.lower() for ev in expected_values):
-                        expected_values_str = ', '.join(expected_values)
+                    if value.lower() not in (ev.lower() for ev in expected_values if ev != "NULL"):
+                        # Filter out 'NULL' from the expected values for display
+                        filtered_expected_values = [ev for ev in expected_values if ev != "NULL"]
+                        expected_values_str = ', '.join(filtered_expected_values)
                         analysis_output.write(f"Warning: {context} {name} is set to {value} instead of one of the best practice values: {expected_values_str}.\n")
                         for line in original_lines:
                             if f'name="{name}"' in line and f'value="{value}"' in line:
@@ -371,15 +377,16 @@ def check_pacemaker_resource_values(parsed_elements, parameters, original_lines,
             # print(f"Debug Checking nvpair attributes for non-primitive element ID: {element.get('id')}")
             check_nvpair(element, context)
 
-    # Check for missing parameters
+    # Check for missing parameters, considering "NULL" as acceptable
     for scope, params in found_parameters.items():
         if scope in resource_types_found or scope in ["global", "property"]:
             for name, found in params.items():
                 if name == 'operation':
                     continue  # Skip checking 'operation' as a parameter name
                 # print(f"Debug Checking parameter Found: {name}, Scope: {scope}, Found: {found}")  # Debugging: Show parameter name and if it was found
-                if not found:
-                    expected_values_str = ', '.join(parameters[scope][name])
+                if not found and "NULL" not in parameters[scope][name]:
+                    filtered_expected_values = [ev for ev in parameters[scope][name] if ev != "NULL"]
+                    expected_values_str = ', '.join(filtered_expected_values)
                     analysis_output.write(f"Warning1: {scope} {name} setting is missing. It should be set to one of the best practice values: {expected_values_str}.\n")
 
     analysis_result = analysis_output.getvalue()
