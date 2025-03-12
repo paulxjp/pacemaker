@@ -1,6 +1,6 @@
 property:stonith-enabled:true
 property:stonith-timeout:144|900
-property:concurrent-fencing:true
+property:concurrent-fencing:true|NULL
 fence_azure_arm:pcmk_delay_max:15
 fence_azure_arm:pcmk_monitor_retries:4
 fence_azure_arm:pcmk_action_limit:3
@@ -8,12 +8,12 @@ fence_azure_arm:power_timeout:240
 fence_azure_arm:pcmk_reboot_timeout:900
 fence_azure_arm:operation:monitor:timeout:120
 fence_azure_arm:operation:monitor:interval:3600
-property:resource-stickiness:1000|1
-property:priority-fencing-delay:30
+azure-lb:resource-stickiness:0|NULL
+property:resource-stickiness:1000|5000|1|3
+property:priority-fencing-delay:30|15
 property:migration-threshold:5000|3
 azure-lb:operation:monitor:timeout:20s|20
 azure-lb:operation:monitor:interval:10s|10
-azure-lb:resource-stickiness:0
 azure-events-az:failure-timeout:120s
 rsc_colocation:score:4000|-5000
 rsc_st_azure:timeout:120
@@ -21,7 +21,12 @@ SAPInstance:resource-stickiness:5000
 SAPInstance:migration-threshold:1
 SAPHana:AUTOMATED_REGISTER:true
 SAPHana:operation:promote:timeout:3600
+SAPHana:operation:monitor:interval:60|61|59
 SAPInstance:operation:monitor:timeout:60
-SAPInstance:operation:monitor:interval:20
+SAPInstance:operation:monitor:interval:20|11
 azure-events-az:failure-timeout:120s
 azure-events-az:operation:monitor:interval:10s|10
+Filesystem:operation:monitor:interval:20s|20
+Filesystem:operation:monitor:timeout:40s|40
+IPaddr2:operation:monitor:interval:10s|10
+IPaddr2:operation:monitor:timeout:20s|20
