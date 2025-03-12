@@ -204,18 +204,14 @@ def parse_cib_xml(file_path, resource_types, output):
         if rsc_location.get('id', '').startswith('cli-'):
             cli_constraints_found = True
             output.write("-" * 40 + "\n")
-            dark_blue = "\033[34m"
-            reset_color = "\033[0m"
-            output.write(f"{dark_blue}CLI Constraint ID: {rsc_location.get('id')}\n{reset_color}")
+            output.write(f"CLI Constraint ID: {rsc_location.get('id')}\n")
             output.write(f"Resource: {rsc_location.get('rsc')}\n")
             output.write(f"Role: {rsc_location.get('role')}\n")
             output.write(f"Node: {rsc_location.get('node')}\n")
             output.write(f"Score: {rsc_location.get('score')}\n")
 
     if not cli_constraints_found:
-        dark_blue = "\033[34m"
-        reset_color = "\033[0m"
-        no_resource_messages.append(f"{dark_blue}No 'cli-' prefixed rsc_location constraints found.\n{reset_color}")
+        no_resource_messages.append(f"No 'cli-' prefixed rsc_location constraints found.\n")
 
     nodes = root.findall(".//node")
     for node in nodes:
@@ -466,13 +462,6 @@ def main():
         # Determine the cluster type and add to the output
         cluster_type_statement = determine_cluster_type(resource_types_found)
         
-        # Define ANSI escape codes for dark blue color
-        dark_blue = "\033[34m"
-        reset_color = "\033[0m"
-
-        # Add color to the cluster type statement
-        colored_cluster_type_statement = f"{dark_blue}{cluster_type_statement}{reset_color}"
-
         title = """
 ##########################################
 #                                        #
@@ -482,7 +471,7 @@ def main():
 ##########################################
 """
         
-        combined_output = title + "\n" + colored_cluster_type_statement + "\n\n" + "\n".join(no_resource_messages) + "\n" + output
+        combined_output = title + "\n" + cluster_type_statement + "\n\n" + "\n".join(no_resource_messages) + "\n" + output
 
         print(combined_output)
         
@@ -494,13 +483,14 @@ def main():
         if root is not None:
             analysis_output = check_pacemaker_resource_values(parsed_elements, parameters, original_lines, resource_types_found)
             
-            print("\n" + "-" * 40 + "\nPacemaker Resource Analysis:\n" + analysis_output)
+            analysis_header = "\n" + "-" * 40 + "\nPacemaker Resource Analysis:\n" + "\n"
+            final_output = analysis_header + cluster_type_statement + "\n" + analysis_output
+            
+            print(final_output)
             print("\n" + "Pacemaker Resource Analysis Done\n")
 
             with open(output_file_path, 'a') as file:
-                file.write("\n" + "-" * 40 + "\n")
-                file.write("Pacemaker Resource Analysis:\n")
-                file.write(analysis_output)
+                file.write(final_output + "\n")
                 file.write("Pacemaker Resource Analysis Done\n")
 
     except KeyboardInterrupt:
