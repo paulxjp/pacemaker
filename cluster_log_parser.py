@@ -1,10 +1,10 @@
+from collections import defaultdict
+from datetime import datetime
 import os
 import re
 import sys
 import logging
 import argparse
-from datetime import datetime
-from collections import defaultdict
 
 # Define relevant keywords for log files
 TARGET_KEYWORDS = ['messages', 'journal', 'analysis', 'crm_mon', 'ha-log', 'corosync', 'pacemaker']
@@ -37,47 +37,85 @@ def is_text_file(file_path, block_size=512):
         return False
 
 def is_target_file(file_name):
-    """
-    Check if the file name contains any of the target keywords.
-    
-    Args:
-        file_name (str): The name of the file to check.
-
-    Returns:
-        bool: True if the file name contains any target keywords, False otherwise.
-    """
     return any(keyword in file_name for keyword in TARGET_KEYWORDS)
 
-def parse_log(file_path, patterns, output_file=None):
-    error_counts = defaultdict(int)
+def parse_and_format_timestamp(timestamp, current_year):
+    formats = [
+        "%b %d %H:%M:%S.%f",  # Pattern for "Feb 16 03:20:34.165"
+        "%b %d %H:%M:%S",     # Pattern for "Jan 07 00:19:21"
+        "%Y-%m-%dT%H:%M:%S.%f%z"  # Pattern for "2025-03-07T01:45:59.817699+00:00"
+    ]
+    
+    for fmt in formats:
+        try:
+            parsed_date = datetime.strptime(timestamp, fmt)
+            if parsed_date.year == 1900:
+                parsed_date = parsed_date.replace(year=current_year)
+            return parsed_date.strftime("%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            continue
+    return None
 
+def extract_and_format_logs(log_lines):
+    current_year = datetime.now().year
+    pattern1 = r'^(\w{3} \d{2} \d{2}:\d{2}:\d{2})(?:\.\d+)? (\S+)'
+    pattern2 = r'^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+\+\d{2}:\d{2}) (\S+)'
+
+    grouped_logs = defaultdict(list)
+
+    for line in log_lines:
+        match1 = re.match(pattern1, line)
+        match2 = re.match(pattern2, line)
+
+        if match1:
+            timestamp, hostname = match1.groups()
+            hostname = hostname.lower()  # Normalize to lowercase
+            formatted_timestamp = parse_and_format_timestamp(timestamp, current_year)
+            remaining_line = line[len(match1.group(0)):].strip()
+        elif match2:
+            timestamp, hostname = match2.groups()
+            hostname = hostname.lower()  # Normalize to lowercase
+            formatted_timestamp = parse_and_format_timestamp(timestamp, current_year)
+            remaining_line = line[len(match2.group(0)):].strip()
+        else:
+            continue
+
+        if formatted_timestamp:
+            grouped_logs[hostname].append((formatted_timestamp, remaining_line))
+
+    for hostname in grouped_logs:
+        grouped_logs[hostname].sort(key=lambda x: x[0])
+
+    return grouped_logs
+
+def parse_log(file_path, patterns, error_hourly_counts, output_file=None):
     if not file_path or not is_text_file(file_path):
         logging.warning(f"Skipping non-text or unreadable file: {file_path}")
-        return error_counts
+        return
 
-    # Try reading the file with different encodings
     encodings = ['utf-8', 'latin-1']  # Add more encodings if needed
 
     for encoding in encodings:
         try:
             with open(file_path, 'r', encoding=encoding) as f:
                 logging.info(f"Start parsing {file_path} with encoding {encoding}")
-                header = f"======= {os.path.basename(file_path)} ======="
+                header = f"======= {file_path} ======="
                 if output_file:
                     output_file.write(header + '\n')
                 print(header)
                 for line in f:
-                    matched_any = False
                     for pattern in patterns:
                         if pattern.search(line):
-                            matched_any = True
-                            error_counts[pattern.pattern] += 1
+                            timestamp, hostname = extract_timestamp_hostname(line)
+                            if timestamp and hostname:
+                                date_hour = timestamp[:13]  # Extract date and hour part
+                                error_hourly_counts[hostname][pattern.pattern][date_hour]['total'] += 1
+                                error_hourly_counts[hostname][pattern.pattern][date_hour]['files'][file_path] += 1
                             if output_file:
                                 output_file.write(line.strip() + '\n')
                             else:
                                 print(line.strip())
-                    if not matched_any:
-                        logging.debug(f"No match for line: {line.strip()}")
+                            break  # Stop checking other patterns if one matches
                 if output_file:
                     output_file.write('\n')
                 print('\n')
@@ -92,20 +130,67 @@ def parse_log(file_path, patterns, output_file=None):
             sys.exit(1)
     else:
         logging.error(f"Unable to decode {file_path} with the specified encodings.")
+
+def extract_timestamp_hostname(line):
+    current_year = datetime.now().year
+    pattern1 = r'^(\w{3} \d{2} \d{2}:\d{2}:\d{2})(?:\.\d+)? (\S+)'
+    pattern2 = r'^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+\+\d{2}:\d{2}) (\S+)'
+
+    match1 = re.match(pattern1, line)
+    match2 = re.match(pattern2, line)
+
+    if match1:
+        timestamp, hostname = match1.groups()
+        hostname = hostname.lower()  # Normalize to lowercase
+        formatted_timestamp = parse_and_format_timestamp(timestamp, current_year)
+        return formatted_timestamp, hostname
+    elif match2:
+        timestamp, hostname = match2.groups()
+        hostname = hostname.lower()  # Normalize to lowercase
+        formatted_timestamp = parse_and_format_timestamp(timestamp, current_year)
+        return formatted_timestamp, hostname
+    else:
+        return None, None
+
+def print_error_statistics(error_counts, error_hourly_counts, output_file=None):
+    separator = "=" * 80  # Define a separator line for clarity
+    print("\n" + separator)
+    print("Error Statistics")
+    print(separator)
     
-    return error_counts
-
-def print_error_statistics(error_counts, output_file=None):
-    print("\nError Statistics:")
     if output_file:
-        output_file.write("\nError Statistics:\n")
+        output_file.write("\n" + separator + "\n")
+        output_file.write("Error Statistics\n")
+        output_file.write(separator + "\n")
 
-    for pattern, count in error_counts.items():
-        clean_pattern = pattern.replace(r'\b', '')
-        result = f"\"{clean_pattern}: {count} occurrences\""
-        print(result)
+    for hostname, patterns in error_hourly_counts.items():
+        host_header = f"\n{separator}\nError Statistics for Hostname: {hostname}\n{separator}"
+        print(host_header)
         if output_file:
-            output_file.write(result + '\n')
+            output_file.write(host_header + '\n')
+
+        for pattern, date_hourly_counts in patterns.items():
+            clean_pattern = pattern.replace(r'\b', '')
+            total_count = sum(info['total'] for info in date_hourly_counts.values())
+            result = f"\nPattern: \"{clean_pattern}\" - {total_count} occurrences"
+            print(result)
+            if output_file:
+                output_file.write(result + '\n')
+
+            for date_hour, info in sorted(date_hourly_counts.items()):
+                count = info['total']
+                if count > 0:
+                    date, hour = date_hour.split()
+                    hourly_result = f"{date} {hour}:00 ~ {hour}:59 - {count} occurrences"
+                    print(hourly_result)
+                    if output_file:
+                        output_file.write(hourly_result + '\n')
+
+                    for file, file_count in info['files'].items():
+                        file_result = f"{file_count} occurrences in file [{file}]"
+                        print(f"    {file_result}")
+                        if output_file:
+                            output_file.write(f"    {file_result}\n")
 
 def main():
     parser = argparse.ArgumentParser(description="Pacemaker Log file analyzer")
@@ -127,18 +212,33 @@ def main():
     output_file = open(output_file_name, 'w')
 
     try:
-        error_counts = defaultdict(int)
+        error_hourly_counts = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: {'total': 0, 'files': defaultdict(int)})))
+        all_matched_lines = []
 
         for root, _, files in os.walk(directory_path):
             for file_name in files:
                 if is_target_file(file_name):
                     file_path = os.path.join(root, file_name)
                     if os.path.isfile(file_path):
-                        counts = parse_log(file_path, patterns, output_file)
-                        for key, value in counts.items():
-                            error_counts[key] += value
+                        parse_log(file_path, patterns, error_hourly_counts, output_file)
 
-        print_error_statistics(error_counts, output_file)
+        # Print error statistics to console and output file
+        print_error_statistics(None, error_hourly_counts, output_file)
+
+        # Process matched log lines and write sorted results to separate files for each hostname
+        grouped_logs = extract_and_format_logs(all_matched_lines)
+        output_file.write("\n======= Grouping and Sorting Logs =======\n")
+        for hostname, logs in grouped_logs.items():
+            hostname_output_file_name = f"{hostname}_{timestamp}_sort.txt"
+            with open(hostname_output_file_name, 'w') as hostname_output_file:
+                if logs:
+                    hostname_output_file.write(f"======= Hostname: {hostname} =======\n")
+                    for log_timestamp, remaining_line in logs:
+                        hostname_output_file.write(f"{log_timestamp} | {remaining_line}\n")
+                else:
+                    hostname_output_file.write(f"======= Hostname: {hostname} =======\nNo errors captured.\n")
+
+            logging.info(f"Output saved to file: {hostname_output_file_name}")
 
         logging.info(f"Output saved to file: {output_file_name}")
     finally:
