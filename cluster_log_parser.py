@@ -1,3 +1,4 @@
+from datetime import datetime
 from collections import defaultdict
 from datetime import datetime
 import os
@@ -153,6 +154,28 @@ def extract_timestamp_hostname(line):
         return None, None
 
 def print_error_statistics(error_counts, error_hourly_counts, output_file=None):
+    
+    title = """
+##########################################
+#                                        #
+#       Pacemaker Log Analysis           #
+#       From Azure Linux Team            #
+#                                        #
+##########################################
+"""
+
+    # Print the title
+    print(title)
+    if output_file:
+        output_file.write(title + '\n')
+        
+    # Get and print the current local timestamp
+    current_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    timestamp_line = f"Report generated on: {current_timestamp}\n"
+    print(timestamp_line)
+    if output_file:
+        output_file.write(timestamp_line + '\n')
+        
     separator = "=" * 80  # Define a separator line for clarity
     print("\n" + separator)
     print("Error Statistics Report")
@@ -231,7 +254,7 @@ def main():
 
         # Process matched log lines and write sorted results to separate files for each hostname
         grouped_logs = extract_and_format_logs(all_matched_lines)
-        output_file.write("\n======= Grouping and Sorting Logs =======\n")
+
         for hostname, logs in grouped_logs.items():
             hostname_output_file_name = f"{hostname}_{timestamp}_sort.txt"
             with open(hostname_output_file_name, 'w') as hostname_output_file:
