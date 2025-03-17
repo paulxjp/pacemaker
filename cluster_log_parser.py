@@ -155,12 +155,12 @@ def extract_timestamp_hostname(line):
 def print_error_statistics(error_counts, error_hourly_counts, output_file=None):
     separator = "=" * 80  # Define a separator line for clarity
     print("\n" + separator)
-    print("Error Statistics")
+    print("Error Statistics Report")
     print(separator)
     
     if output_file:
         output_file.write("\n" + separator + "\n")
-        output_file.write("Error Statistics\n")
+        output_file.write("Error Statistics Report\n")
         output_file.write(separator + "\n")
 
     for hostname, patterns in error_hourly_counts.items():
@@ -177,20 +177,24 @@ def print_error_statistics(error_counts, error_hourly_counts, output_file=None):
             if output_file:
                 output_file.write(result + '\n')
 
+            # Group occurrences by file path
+            file_grouped_data = defaultdict(list)
             for date_hour, info in sorted(date_hourly_counts.items()):
-                count = info['total']
-                if count > 0:
-                    date, hour = date_hour.split()
-                    hourly_result = f"{date} {hour}:00 ~ {hour}:59 - {count} occurrences"
-                    print(hourly_result)
-                    if output_file:
-                        output_file.write(hourly_result + '\n')
+                for file_path, file_count in info['files'].items():
+                    file_grouped_data[file_path].append((date_hour, file_count))
 
-                    for file, file_count in info['files'].items():
-                        file_result = f"{file_count} occurrences in file [{file}]"
-                        print(f"    {file_result}")
+            for file_path, occurrences in file_grouped_data.items():
+                print(f"\n[{file_path}]")
+                if output_file:
+                    output_file.write(f"\n[{file_path}]\n")
+
+                for date_hour, count in occurrences:
+                    if count > 0:
+                        date, hour = date_hour.split()
+                        hourly_result = f"{date} {hour}:00 ~ {hour}:59 - {count} occurrences"
+                        print(hourly_result)
                         if output_file:
-                            output_file.write(f"    {file_result}\n")
+                            output_file.write(hourly_result + '\n')
 
 def main():
     parser = argparse.ArgumentParser(description="Pacemaker Log file analyzer")
