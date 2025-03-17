@@ -1,3 +1,4 @@
+cluster node .* will be fenced
 Fence .*
 maintenance-mode
 \[TOTEM \].*	
@@ -11,7 +12,7 @@ peer is no longer part of the cluster
 unresponsive to ipc
 Forcing.* away
 Move rsc
-due to
+pacemaker-schedulerd.* due to
 SAPInstance\(.*\): .*
 SAPHana\(.*\): .*
 HANA_CALL
