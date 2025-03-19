@@ -1,4 +1,5 @@
-from datetime import datetime
+from datetime import datetime, timezone
+import time
 from collections import defaultdict
 from datetime import datetime
 import os
@@ -190,8 +191,13 @@ def print_error_statistics(error_counts, error_hourly_counts, output_file=None):
     if output_file:
         output_file.write(title + '\n')
         
-    # Get and print the current local timestamp
-    current_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    # Get the local time and timezone
+    local_time = time.localtime()
+    local_timezone = time.strftime('%Z', local_time)
+    local_utc_offset = time.strftime('%z', local_time)
+
+    # Get and print the current local timestamp with timezone
+    current_timestamp = datetime.now().strftime(f"%Y-%m-%d %H:%M:%S {local_timezone}{local_utc_offset}")
     timestamp_line = f"Report generated on: {current_timestamp}\n"
     print(timestamp_line)
     if output_file:
