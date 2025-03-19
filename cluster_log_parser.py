@@ -6,6 +6,8 @@ import re
 import sys
 import logging
 import argparse
+import gzip
+import lzma
 
 # Define relevant keywords for log files
 TARGET_KEYWORDS = ['messages', 'journal', 'analysis', 'crm_mon', 'ha-log', 'corosync', 'pacemaker']
@@ -89,12 +91,30 @@ def extract_and_format_logs(log_lines):
 
     return grouped_logs
 
+def decompress_file(file_path):
+    if file_path.endswith('.gz'):
+        with gzip.open(file_path, 'rt', encoding='utf-8') as f:
+            return f.read()
+    elif file_path.endswith('.xz'):
+        with lzma.open(file_path, 'rt', encoding='utf-8') as f:
+            return f.read()
+    else:
+        return None
+        
 def parse_log(file_path, patterns, error_hourly_counts, output_file=None):
-    if not file_path or not is_text_file(file_path):
+    if not file_path or (not is_text_file(file_path) and not file_path.endswith(('.gz', '.xz'))):
         logging.warning(f"Skipping non-text or unreadable file: {file_path}")
         return
 
     encodings = ['utf-8', 'latin-1']  # Add more encodings if needed
+    
+    file_content = None
+    if file_path.endswith(('.gz', '.xz')):
+        try:
+            file_content = decompress_file(file_path)
+        except Exception as e:
+            logging.error(f"Failed to decompress {file_path}: {e}")
+            return
 
     for encoding in encodings:
         try:
@@ -104,6 +124,7 @@ def parse_log(file_path, patterns, error_hourly_counts, output_file=None):
                 if output_file:
                     output_file.write(header + '\n')
                 print(header)
+                
                 for line in f:
                     for pattern in patterns:
                         if pattern.search(line):
