@@ -93,14 +93,24 @@ def extract_and_format_logs(log_lines):
     return grouped_logs
 
 def decompress_file(file_path):
+    decompressed_content = None
+    decompressed_file_path = None
+    
     if file_path.endswith('.gz'):
+        decompressed_file_path = file_path[:-3]  # Remove '.gz' extension
         with gzip.open(file_path, 'rt', encoding='utf-8') as f:
-            return f.read()
+            decompressed_content = f.read()
     elif file_path.endswith('.xz'):
+        decompressed_file_path = file_path[:-3]  # Remove '.xz' extension
         with lzma.open(file_path, 'rt', encoding='utf-8') as f:
-            return f.read()
-    else:
-        return None
+            decompressed_content = f.read()
+
+    if decompressed_content is not None and decompressed_file_path is not None:
+        # Write the decompressed content to a file
+        with open(decompressed_file_path, 'w', encoding='utf-8') as decompressed_file:
+            decompressed_file.write(decompressed_content)
+    
+    return decompressed_content
         
 def parse_log(file_path, patterns, error_hourly_counts, output_file=None):
     if not file_path or (not is_text_file(file_path) and not file_path.endswith(('.gz', '.xz'))):
@@ -113,6 +123,9 @@ def parse_log(file_path, patterns, error_hourly_counts, output_file=None):
     if file_path.endswith(('.gz', '.xz')):
         try:
             file_content = decompress_file(file_path)
+            if file_content is None:
+                logging.error(f"Failed to decompress {file_path}")
+                return
         except Exception as e:
             logging.error(f"Failed to decompress {file_path}: {e}")
             return
