@@ -13,15 +13,19 @@ unresponsive to ipc
 Forcing.* away
 Move rsc
 pacemaker-schedulerd.* due to
+pacemaker-.* Unexpected result
+did not complete within
 SAPInstance\(.*\): .*
 SAPHana\(.*\): .*
 HANA_CALL
 status GRAY
 SFAIL
-not.*SOK
+not .*SOK
 COULD NOT BE PROMOTED
 promote
 demote
+DEMOTED
+PROMOTED
 stonith-ng
 stonith_notify
 High CPU load detected: .*
