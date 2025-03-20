@@ -57,16 +57,34 @@ def is_target_file(file_name):
 def extract_date_from_filename(filename):
     # Define regex patterns for various date formats in filenames
     patterns = [
-        r'(\d{4})(\d{2})(\d{2})',    # YYYYMMDD
-        r'(\d{4})-(\d{2})-(\d{2})',  # YYYY-MM-DD
-        r'(\d{4})_(\d{2})_(\d{2})'   # YYYY_MM_DD
+        r'(?P<year>\d{4})(?P<month>\d{2})(?P<day>\d{2})',    # YYYYMMDD
+        r'(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})',  # YYYY-MM-DD
+        r'(?P<year>\d{4})_(?P<month>\d{2})_(?P<day>\d{2})',  # YYYY_MM_DD
+        r'(?P<year>\d{2})(?P<month>\d{2})(?P<day>\d{2})'     # YYMMDD
     ]
 
     for pattern in patterns:
         match = re.search(pattern, filename)
         if match:
-            year, month, day = match.groups()
-            return datetime(int(year), int(month), int(day))
+            year = int(match.group('year'))
+            month = int(match.group('month'))
+            day = int(match.group('day'))
+
+            # Handle two-digit year (e.g., "YYMMDD")
+            if year < 100:
+                current_year = datetime.now().year
+                current_century = current_year // 100 * 100
+                year += current_century
+
+            try:
+                return datetime(year, month, day)
+            except ValueError:
+                # Log a warning if the date is invalid
+                logging.warning(f"Invalid date extracted from filename: {filename}")
+                continue
+
+    # Log a warning if no date pattern matches
+    logging.warning(f"No valid date found in filename: {filename}")
     return None
     
 def should_parse_file(filename):
