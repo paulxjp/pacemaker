@@ -80,11 +80,11 @@ def extract_date_from_filename(filename):
                 return datetime(year, month, day)
             except ValueError:
                 # Log a warning if the date is invalid
-                logging.warning(f"Invalid date extracted from filename: {filename}")
+                # logging.warning(f"Invalid date extracted from filename: {filename}")
                 continue
 
     # Log a warning if no date pattern matches
-    logging.warning(f"No valid date found in filename: {filename}")
+    # logging.warning(f"No valid date found in filename: {filename}")
     return None
     
 def should_parse_file(filename):
