@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import time
 from collections import defaultdict
 from datetime import datetime
@@ -11,7 +11,18 @@ import gzip
 import lzma
 
 # Define relevant keywords for log files
-TARGET_KEYWORDS = ['messages', 'journal', 'analysis', 'crm_mon', 'ha-log', 'corosync', 'pacemaker']
+TARGET_KEYWORDS = ['messages', 'journal', 'crm_mon', 'analysis', 'ha-log', 'corosync', 'pacemaker']
+
+# Define a global constant for the number of days
+DAYS_TO_ANALYZE = 60  # Number of days to look back for log analysis
+
+# Global pattern definitions
+LOG_PATTERNS = [
+    (r'^(\w{3} \d{2} \d{2}:\d{2}:\d{2})(?:\.\d+)? \[\d+\] (\S+)', 1),
+    (r'^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+\+\d{2}:\d{2}) (\S+)', 2),
+    (r'^(\w{3} \d{2} \d{2}:\d{2}:\d{2}) (\S+)', 3),
+    (r'^(\w{3} \d{2} \d{2}:\d{2}:\d{2}) \[\d+\] (\S+)', 4)
+]
 
 def compile_patterns(pattern_file='err_pattern.txt'):
     if not os.path.isfile(pattern_file):
@@ -42,55 +53,87 @@ def is_text_file(file_path, block_size=512):
 
 def is_target_file(file_name):
     return any(keyword in file_name for keyword in TARGET_KEYWORDS)
+    
+def extract_date_from_filename(filename):
+    # Define regex patterns for various date formats in filenames
+    patterns = [
+        r'(\d{4})(\d{2})(\d{2})',    # YYYYMMDD
+        r'(\d{4})-(\d{2})-(\d{2})',  # YYYY-MM-DD
+        r'(\d{4})_(\d{2})_(\d{2})'   # YYYY_MM_DD
+    ]
+
+    for pattern in patterns:
+        match = re.search(pattern, filename)
+        if match:
+            year, month, day = match.groups()
+            return datetime(int(year), int(month), int(day))
+    return None
+    
+def should_parse_file(filename):
+    file_date = extract_date_from_filename(filename)
+    if file_date:
+        # Calculate the cutoff date based on the global constant
+        cutoff_date = datetime.now() - timedelta(days=DAYS_TO_ANALYZE)
+        return file_date >= cutoff_date
+    return True  # If no date is found, assume it's a recent log
 
 def parse_and_format_timestamp(timestamp, current_year):
     formats = [
-        "%b %d %H:%M:%S.%f",  # Pattern for "Feb 16 03:20:34.165"
+        # Pattern order matter here
         "%b %d %H:%M:%S",     # Pattern for "Jan 07 00:19:21"
+        "%b %d %H:%M:%S.%f",  # Pattern for "Feb 16 03:20:34.165"
         "%Y-%m-%dT%H:%M:%S.%f%z"  # Pattern for "2025-03-07T01:45:59.817699+00:00"
     ]
     
+    current_month = datetime.now().month
+
     for fmt in formats:
         try:
             parsed_date = datetime.strptime(timestamp, fmt)
+            # print(f"DEBUG: Parsed date (initial): {parsed_date}")  # Debugging output for initial parsed date
+            
+            # If the year is missing, parsed_date.year will be 1900
             if parsed_date.year == 1900:
-                parsed_date = parsed_date.replace(year=current_year)
+                # Assign last year if the month is greater than the current month
+                if parsed_date.month > current_month:
+                    parsed_date = parsed_date.replace(year=current_year - 1)
+                    # print(f"DEBUG: Parsed date (initial): {parsed_date}")  # Debugging output for initial parsed date
+                else:
+                    parsed_date = parsed_date.replace(year=current_year)
+                    # print(f"DEBUG: Adjusted year (current year): {parsed_date}")  # Debugging output for adjusted date
+                    
+            # Make current time aware by using the parsed_date's timezone
+            now_aware = datetime.now(parsed_date.tzinfo)
+            
+            # Check if the parsed date is within the last days
+            if parsed_date < now_aware - timedelta(days=DAYS_TO_ANALYZE):
+                # print(f"DEBUG: Parsed date is older than {DAYS_TO_ANALYZE} days: {parsed_date}")  # Debugging output for date check
+                return None
+
             return parsed_date.strftime("%Y-%m-%d %H:%M:%S")
-        except ValueError:
+        except ValueError as e:
+            # Debugging output for timestamp parsing failures, this is normal that if one previous format gives exception then it will continue
+            # print(f"DEBUG exception: Failed to parse timestamp: {timestamp} using format {fmt}. Error: {e}")
             continue
+            
     return None
 
-def extract_and_format_logs(log_lines):
+def extract_timestamp_hostname(line):
     current_year = datetime.now().year
-    pattern1 = r'^(\w{3} \d{2} \d{2}:\d{2}:\d{2})(?:\.\d+)? (\S+)'
-    pattern2 = r'^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+\+\d{2}:\d{2}) (\S+)'
 
-    grouped_logs = defaultdict(list)
-
-    for line in log_lines:
-        match1 = re.match(pattern1, line)
-        match2 = re.match(pattern2, line)
-
-        if match1:
-            timestamp, hostname = match1.groups()
+    for pattern, _ in LOG_PATTERNS:
+        match = re.match(pattern, line)
+        if match:
+            timestamp, hostname = match.groups()
             hostname = hostname.lower()  # Normalize to lowercase
             formatted_timestamp = parse_and_format_timestamp(timestamp, current_year)
-            remaining_line = line[len(match1.group(0)):].strip()
-        elif match2:
-            timestamp, hostname = match2.groups()
-            hostname = hostname.lower()  # Normalize to lowercase
-            formatted_timestamp = parse_and_format_timestamp(timestamp, current_year)
-            remaining_line = line[len(match2.group(0)):].strip()
-        else:
-            continue
+            if formatted_timestamp is None:
+                # print(f"DEBUG: Failed to format timestamp: {timestamp}")
+                continue
+            return formatted_timestamp, hostname
 
-        if formatted_timestamp:
-            grouped_logs[hostname].append((formatted_timestamp, remaining_line))
-
-    for hostname in grouped_logs:
-        grouped_logs[hostname].sort(key=lambda x: x[0])
-
-    return grouped_logs
+    # print(f"DEBUG: Failed to extract timestamp/hostname from line: {line.strip()}")
+    return None, None
 
 def decompress_file(file_path):
     decompressed_content = None
@@ -113,6 +156,10 @@ def decompress_file(file_path):
     return decompressed_content
         
 def parse_log(file_path, patterns, error_hourly_counts, output_file=None):
+    if not should_parse_file(os.path.basename(file_path)):
+        logging.info(f"Skipping file {file_path} as it is older than {DAYS_TO_ANALYZE} days.")
+        return
+    
     if not file_path or (not is_text_file(file_path) and not file_path.endswith(('.gz', '.xz'))):
         logging.warning(f"Skipping non-text or unreadable file: {file_path}")
         return
@@ -126,38 +173,66 @@ def parse_log(file_path, patterns, error_hourly_counts, output_file=None):
             if file_content is None:
                 logging.error(f"Failed to decompress {file_path}")
                 return
+            # Print header only once when file content is successfully decompressed
+            header = f"======= {file_path} ======="
+            if output_file:
+                output_file.write(header + '\n')
+            print(header)
         except Exception as e:
             logging.error(f"Failed to decompress {file_path}: {e}")
             return
 
+    encoding_failed = False  # Flag to indicate if decoding has failed for this file
     for encoding in encodings:
         try:
-            with open(file_path, 'r', encoding=encoding) as f:
-                logging.info(f"Start parsing {file_path} with encoding {encoding}")
-                header = f"======= {file_path} ======="
-                if output_file:
-                    output_file.write(header + '\n')
-                print(header)
+            if file_content is not None:
+                # Use the decompressed content
+                lines = file_content.splitlines()
+            else:
+                # Open and read file directly
+                with open(file_path, 'r', encoding=encoding) as f:
+                    lines = f.readlines()
+                    # Print header only for non-compressed files
+                    header = f"======= {file_path} ======="
+                    if output_file:
+                        output_file.write(header + '\n')
+                    print(header)
+
+            # logging.info(f"Start parsing {file_path} with encoding {encoding}")
                 
-                for line in f:
-                    for pattern in patterns:
-                        if pattern.search(line):
-                            timestamp, hostname = extract_timestamp_hostname(line)
-                            if timestamp and hostname:
-                                date_hour = timestamp[:13]  # Extract date and hour part
-                                error_hourly_counts[hostname][pattern.pattern][date_hour]['total'] += 1
-                                error_hourly_counts[hostname][pattern.pattern][date_hour]['files'][file_path] += 1
-                            if output_file:
-                                output_file.write(line.strip() + '\n')
-                            else:
-                                print(line.strip())
-                            break  # Stop checking other patterns if one matches
-                if output_file:
-                    output_file.write('\n')
-                print('\n')
+            for line in lines:
+                for pattern in patterns:
+                    if pattern.search(line):
+                        # Debug print(f"Pattern matched: {pattern.pattern} in {file_path}")
+                        timestamp, hostname = extract_timestamp_hostname(line)
+                        
+                        if timestamp is None or hostname is None:
+                            # Debugging output for lines with missing information
+                            # print(f"DEBUG: Skipping line due to missing timestamp or hostname: {line.strip()}")
+                            break  # Skip this line if timestamp or hostname is missing
+                        
+                        # Debug print(f"Extracted Timestamp: {timestamp}, Hostname: {hostname}")
+                        
+                        if timestamp and hostname:
+                            date_hour = timestamp[:13]  # Extract date and hour part
+                            error_hourly_counts[hostname][pattern.pattern][date_hour]['total'] += 1
+                            error_hourly_counts[hostname][pattern.pattern][date_hour]['files'][file_path] += 1
+                        
+                        # Debug print(f"Updated error_hourly_counts for {hostname}: {error_hourly_counts[hostname]}")
+                        if output_file:
+                            output_file.write(line.strip() + '\n')
+                        else:
+                            print(line.strip())
+                        break  # Stop checking other patterns if one matches
+            if output_file:
+                output_file.write('\n')
+            print('\n')
             break  # Exit the loop if the file was successfully read
         except UnicodeDecodeError:
-            logging.warning(f"Failed to decode {file_path} using {encoding}, trying next encoding...")
+            if not encoding_failed:
+                # logging.warning(f"Failed to decode {file_path} using {encoding}, trying next encoding...")
+                encoding_failed = True  # Set the flag to avoid repeated messages
+            continue
         except FileNotFoundError:
             logging.error(f"File {file_path} not found.")
             sys.exit(1)
@@ -167,26 +242,31 @@ def parse_log(file_path, patterns, error_hourly_counts, output_file=None):
     else:
         logging.error(f"Unable to decode {file_path} with the specified encodings.")
 
-def extract_timestamp_hostname(line):
+def extract_and_format_logs(log_lines):
     current_year = datetime.now().year
-    pattern1 = r'^(\w{3} \d{2} \d{2}:\d{2}:\d{2})(?:\.\d+)? (\S+)'
-    pattern2 = r'^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+\+\d{2}:\d{2}) (\S+)'
+    grouped_logs = defaultdict(list)
 
-    match1 = re.match(pattern1, line)
-    match2 = re.match(pattern2, line)
+    for line in log_lines:
+        for pattern, _ in LOG_PATTERNS:
+            match = re.match(pattern, line)
+            if match:
+                timestamp, hostname = match.groups()
+                hostname = hostname.lower()  # Normalize to lowercase
+                formatted_timestamp = parse_and_format_timestamp(timestamp, current_year)
+                if formatted_timestamp is None:
+                    # print(f"DEBUG: Failed to format timestamp: {timestamp}")
+                    break
 
-    if match1:
-        timestamp, hostname = match1.groups()
-        hostname = hostname.lower()  # Normalize to lowercase
-        formatted_timestamp = parse_and_format_timestamp(timestamp, current_year)
-        return formatted_timestamp, hostname
-    elif match2:
-        timestamp, hostname = match2.groups()
-        hostname = hostname.lower()  # Normalize to lowercase
-        formatted_timestamp = parse_and_format_timestamp(timestamp, current_year)
-        return formatted_timestamp, hostname
-    else:
-        return None, None
+                remaining_line = line[len(match.group(0)):].strip()
+                grouped_logs[hostname].append((formatted_timestamp, remaining_line))
+                break
+        else:
+            print(f"DEBUG: Failed to extract timestamp/hostname from line: {line.strip()}")
+
+    for hostname in grouped_logs:
+        grouped_logs[hostname].sort(key=lambda x: x[0])
+
+    return grouped_logs
 
 def print_error_statistics(error_counts, error_hourly_counts, output_file=None):
     
@@ -259,6 +339,35 @@ def print_error_statistics(error_counts, error_hourly_counts, output_file=None):
                         if output_file:
                             output_file.write(hourly_result + '\n')
 
+def should_process_file(file_path, processed_files):
+    """
+    Determine if a given log file should be processed based on whether it has
+    a compressed counterpart.
+
+    :param file_path: Path to the log file.
+    :param processed_files: Set of processed file names to avoid duplicates.
+    :return: Boolean indicating if the file should be processed.
+    """
+    # Check if the file is a compressed log file
+    if file_path.endswith(('.gz', '.xz')):
+        # Consider the base name without the compression extension
+        base_name = os.path.basename(file_path)[:-3]
+        if base_name in processed_files:
+            # If the base name is already in the processed files, skip this file
+            return False
+        # Otherwise, mark this compressed file as processed
+        processed_files.add(base_name)
+        return True
+    else:
+        # For uncompressed files, only process if there's no compressed counterpart
+        compressed_name_gz = f"{file_path}.gz"
+        compressed_name_xz = f"{file_path}.xz"
+        if not os.path.exists(compressed_name_gz) and not os.path.exists(compressed_name_xz):
+            # If no compressed version exists, mark this file as processed
+            processed_files.add(os.path.basename(file_path))
+            return True
+    return False
+    
 def main():
     parser = argparse.ArgumentParser(description="Pacemaker Log file analyzer")
     parser.add_argument('-d', '--directory', help="Directory containing log files", required=True)
@@ -282,10 +391,12 @@ def main():
         error_hourly_counts = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: {'total': 0, 'files': defaultdict(int)})))
         all_matched_lines = []
 
+        processed_files = set()  # To keep track of processed files
+
         for root, _, files in os.walk(directory_path):
             for file_name in files:
-                if is_target_file(file_name):
-                    file_path = os.path.join(root, file_name)
+                file_path = os.path.join(root, file_name)
+                if is_target_file(file_name) and should_process_file(file_path, processed_files):
                     if os.path.isfile(file_path):
                         parse_log(file_path, patterns, error_hourly_counts, output_file)
 
