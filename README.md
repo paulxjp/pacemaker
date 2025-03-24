@@ -150,37 +150,57 @@ For type2 - check operation settings, e.g. timeout, interval
 
 **Note**: If you are not quite sure, do not edit this manually, check with the author.
 
-# cluster_log_parser
+# linux_log_parser.py
 
-This script `cluster_log_parser` is used to parse pacemaker specific activity log lines.
+This `linux_log_parser.py` script has inherited from `cluster_log_parser`, which was originally used to parse pacemaker specific activity log lines.
 
-It searches the pattern strings in `err_pattern.txt` in the same directory then saves the output to a file named clusterlogparser_{timestamp}.txt in the same directory where the script is run.
+Now `linux_log_parser.py` is a framework user can define their own patterns for specific scenarios.
+
+It searches the pattern strings in `<type>_pattern.txt` in the same directory, for scope files defined in `<type>_filelist.txt`, then saves the output to a file named <type>_{timestamp}.txt in the same directory where the script is run.
+
+After extracting the matched lines, the script process each line, extract the timestamp and hostname, format the timestamp, and group the entries by hostname.
+
+Finally it provides statistics on the occurrences of each pattern, group by hostname/hourly period.
 
 **Usage**
+
+Example for pacemaker scenario
+
 ```
-python3 cluster_log_parser.py -d /clusterlogfiles
+python3 linux_log_parser.py -t pacemaker -d <target dir>
 
-2024-12-27 15:20:06,029 - INFO - Start parsing /mnt/c/AI/pacemakertool/clusterlogfiles/cib_parserV1.7.py
-======= cib_parserV1.7.py =======
+##########################################
+#                                        #
+#       Linux Log Analysis               #
+#       From Azure Linux Team            #
+#                                        #
+##########################################
+
+Report generated on: 2025-03-24 12:00:38 CST+0800
 
 
-2024-12-27 15:20:06,083 - INFO - Start parsing /mnt/c/AI/pacemakertool/clusterlogfiles/ha-log.txt
-======= ha-log.txt =======
+================================================================================
+Error Statistics Report
+================================================================================
 
+================================================================================
+Error Statistics for Hostname: node1
+================================================================================
 
-2024-12-27 15:20:09,147 - INFO - Start parsing /mnt/c/AI/pacemakertool/clusterlogfiles/pacemaker.log
-======= pacemaker.log =======
+======= /var/log/messages =======
 
-Error Statistics:
-"HANA_CALL: 24 occurrences"
-"demote: 13 occurrences"
-"promote: 34 occurrences"
-"not.*SOK: 8 occurrences"
-"SFAIL: 18 occurrences"
-"Node .*is now lost: 6 occurrences"
-"node .*not expected: 2 occurrences"
-"check_migration_threshold: 216 occurrences"
-"stonith-ng: 5 occurrences"
-"Fence .*: 1 occurrences"
-2024-12-27 15:20:17,954 - INFO - Output saved to file: clusterlogparser_12-27-152005.txt
+Pattern: "pacemaker-schedulerd.* due to" - 34 occurrences
+
+[/var/log/pacemaker/pacemaker.log-20250222.gz]
+2025-02-16 06:00 ~ 06:59 - 15 occurrences
+
+[/var/log/pacemaker/pacemaker.log-20250223.gz]
+2025-02-22 05:00 ~ 05:59 - 12 occurrences
+2025-02-22 06:00 ~ 06:59 - 7 occurrences
+
+Pattern: "Node .*is now lost" - 5 occurrences
+
+[/var/log/pacemaker/pacemaker.log-20250222.gz]
+2025-02-16 06:00 ~ 06:59 - 5 occurrences
+
 ```
