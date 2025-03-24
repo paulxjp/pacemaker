@@ -1,7 +1,6 @@
 messages
 journal
-corosync
-pacemaker
 kern
 syslog
 boot
+secure
