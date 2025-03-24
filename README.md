@@ -169,6 +169,14 @@ Example for pacemaker scenario
 ```
 python3 linux_log_parser.py -t pacemaker -d <target dir>
 
+python3 linux_log_parser.py -h
+
+Usage options:
+  -h, --help            show this help message and exit
+  -d DIRECTORY, --directory DIRECTORY
+  -t TYPE, --type TYPE  Type of log patterns to use
+  --days DAYS           Number of days to look back for log analysis (default is 60)
+
 ##########################################
 #                                        #
 #       Linux Log Analysis               #
