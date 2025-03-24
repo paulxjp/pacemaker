@@ -1,0 +1,7 @@
+messages
+journal
+crm_mon
+analysis
+ha-log
+corosync
+pacemaker

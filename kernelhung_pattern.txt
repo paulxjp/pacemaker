@@ -1,0 +1,4 @@
+soft lockup
+ds_am module is lack of KernelSupport
+stuck for
+not respond
