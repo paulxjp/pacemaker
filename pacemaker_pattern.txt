@@ -22,10 +22,10 @@ status GRAY
 SFAIL
 not .*SOK
 COULD NOT BE PROMOTED
+PROMOTED
+DEMOTED
 promote
 demote
-DEMOTED
-PROMOTED
 stonith-ng
 stonith_notify
 High CPU load detected: .*
