@@ -57,21 +57,22 @@ def read_target_keywords(pattern_type):
     Reads target keywords from a file named `<type>_filelist.txt`.
     
     :param pattern_type: The type of log patterns to use.
-    :return: A list of target keywords.
+    :return: A list of target keywords or an empty list if no file is found.
     """
     filelist_file = f"{pattern_type}_filelist.txt"
     
+    # Check if the file exists
     if not os.path.isfile(filelist_file):
-        logging.error(f"File list '{filelist_file}' not found.")
-        sys.exit(1)
-
+        logging.info(f"File list '{filelist_file}' not found. Searching all files.")
+        return []  # Return an empty list indicating no specific targets
+    
     with open(filelist_file, 'r') as f:
         keywords = [line.strip() for line in f if line.strip()]
         
+    # If the file exists but is empty, log a reminder message
     if not keywords:
-        logging.error(f"File list '{filelist_file}' is empty.")
-        sys.exit(1)
-        
+        logging.info(f"File list '{filelist_file}' is empty. Searching all files.")
+    
     return keywords
     
 def is_target_file(file_name, target_keywords):
@@ -80,8 +81,12 @@ def is_target_file(file_name, target_keywords):
     
     :param file_name: The name of the file to check.
     :param target_keywords: A list of keywords to match against the file name.
-    :return: True if the file name contains any of the target keywords, False otherwise.
+    :return: True if the file name contains any of the target keywords, or if the keyword list is empty.
     """
+    if not target_keywords:
+        # If the keyword list is empty, consider all files as target files
+        return True
+    
     return any(keyword in file_name for keyword in target_keywords)
     
 def extract_date_from_filename(filename):
@@ -426,17 +431,16 @@ def main():
     # Use args.days to set the number of days to analyze
     DAYS_TO_ANALYZE = args.days
 
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
     patterns = compile_patterns(args.type)
-    
-    # Read target keywords from the file
     target_keywords = read_target_keywords(args.type)
 
     directory_path = args.directory
+    # logging.debug(f"Analyzing directory: {directory_path}")
 
     if not directory_path or not os.path.isdir(directory_path):
-        logging.error("The directory path is invalid or does not exist.")
+        # logging.error("The directory path is invalid or does not exist.")
         sys.exit(1)
 
     timestamp = datetime.now().strftime('%m-%d-%H%M%S')
@@ -447,19 +451,19 @@ def main():
         error_hourly_counts = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: {'total': 0, 'files': defaultdict(int)})))
         all_matched_lines = []
 
-        processed_files = set()  # To keep track of processed files
+        processed_files = set()
 
         for root, _, files in os.walk(directory_path):
+            # logging.debug(f"Checking directory: {root}")
             for file_name in files:
                 file_path = os.path.join(root, file_name)
+                # logging.debug(f"Checking file: {file_path}")
                 if is_target_file(file_name, target_keywords) and should_process_file(file_path, processed_files):
                     if os.path.isfile(file_path):
                         parse_log(file_path, patterns, error_hourly_counts, DAYS_TO_ANALYZE, output_file)
 
-        # Print error statistics to console and output file
         print_error_statistics(None, error_hourly_counts, output_file)
 
-        # Process matched log lines and write sorted results to separate files for each hostname
         grouped_logs = extract_and_format_logs(all_matched_lines)
 
         for hostname, logs in grouped_logs.items():
