@@ -10,6 +10,7 @@ node is offline
 node is pending
 peer is no longer part of the cluster
 unresponsive to ipc
+link.* is down
 Forcing.* away
 Move rsc
 pacemaker-schedulerd.* due to
